@@ -1,0 +1,4 @@
+repos
+.env
+*.log
+.DS_Store
