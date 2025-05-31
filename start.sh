@@ -89,17 +89,29 @@ push_to_github() {
   gh repo create "$GITHUB_ORG/$slug" --private || return 1
   cd "$REPOS_DIR/$slug.git" || return 1  # Enter repo directory
 
+  # Remove commit authors
+  log_message "INFO" "Removing commit authors before pushing to GitHub..."
+  git filter-repo --replace-refs delete-no-add --commit-callback "
+commit.author_name = b\"${GIT_AUTHOR_NAME}\"
+commit.author_email = b\"${GIT_AUTHOR_EMAIL}\"
+commit.committer_name = b\"${GIT_AUTHOR_NAME}\"
+commit.committer_email = b\"${GIT_AUTHOR_EMAIL}\"
+" || return 1
+
   # Verify repository integrity and clean up
-  # git fsck || return 1
-  # git gc --aggressive --prune=all || return 1
-  # git repack -a -d --depth=250 --window=250 || return 1
+  log_message "INFO" "Repository $slug cleaned and ready for push."
+  git fsck || return 1
+  git gc --aggressive --prune=all || return 1
+  git repack -a -d --depth=250 --window=250 || return 1
 
   # Add remote origin
+  log_message "INFO" "Adding GitHub remote origin for $slug to https://github.com/$GITHUB_ORG/$slug.git ..."
   git remote add github "https://github.com/$GITHUB_ORG/$slug.git" || return 1
 
   # Detect default branch
   local default_branch
   default_branch=$(git symbolic-ref HEAD | sed 's@^refs/heads/@@')
+  log_message "INFO" "Detected default branch: $default_branch"
 
   # Push default branch first
   if [[ -n "$default_branch" ]]; then

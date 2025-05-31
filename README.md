@@ -37,6 +37,9 @@ Before using this tool, ensure you have the following:
 2. **Tools**:
    - Git installed on your system.
    - GitHub CLI (`gh`) installed and authenticated.
+   - `git-filter-repo` installed:
+     - For macOS: `brew install git-filter-repo`
+     - For Ubuntu: `sudo apt install python3 && pip3 install git-filter-repo`
 
 3. **CSV File Format**:
    - The CSV file should have the following columns:
