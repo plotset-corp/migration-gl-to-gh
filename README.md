@@ -2,6 +2,19 @@
 
 This project provides a CLI tool to automate the migration of repositories from GitLab to GitHub. It handles cloning repositories and pushing them to a GitHub organization.
 
+## Table of Contents
+- [Features](#features)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Usage](#usage)
+- [CSV File Details](#csv-file-details)
+- [Additional Permissions](#additional-permissions)
+- [Logging](#logging)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Contributing](#contributing)
+- [Contact](#contact)
+
 ## Features
 - Clone repositories from GitLab.
 - Push repositories to GitHub.
@@ -74,7 +87,8 @@ To start the migration process:
 ./start.sh migrate
 ```
 
-### CSV File Details
+## CSV File Details
+
 The CSV file tracks the migration progress for each repository. The `step_status` column indicates the current status:
 - `cloned`: Repository has been cloned from GitLab.
 - `pushed`: Repository has been pushed to GitHub.
@@ -89,6 +103,7 @@ gh auth refresh -s delete_repo
 This grants the ability to delete repositories using the CLI.
 
 ## Logging
+
 Logs are saved in files named `migration_<timestamp>.log` in the project directory. These logs provide detailed information about the migration process.
 
 ## Troubleshooting
@@ -105,11 +120,18 @@ gh auth login
 ### CSV File Issues
 Ensure the CSV file is properly formatted and contains valid GitLab repository URLs.
 
+## Known Issues
+- **Large Repository Sizes**: Migration may take longer for repositories with large histories.
+- **Rate Limits**: Ensure your GitHub and GitLab tokens have sufficient API rate limits.
+
 ## License
+
 This project is licensed under the MIT License.
 
 ## Contributing
+
 Feel free to submit issues or pull requests to improve this tool.
 
 ## Contact
-For questions or support, contact [Ali](mailto:ali@example.com).
+
+For questions or support, contact [owner](mailto:hello@plotset.com). Alternatively, open an issue in the repository.

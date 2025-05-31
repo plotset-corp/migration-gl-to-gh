@@ -54,8 +54,10 @@ update_step_status() {
   # Use awk to append the step if not already present, preserving history, using '>' as separator
   awk -F, -v OFS="," -v slug="$slug" -v step="$step" '{
     if (NR==1) { print $0; next }
-    if ($2==slug && index($3, step)==0) {
-      if ($3=="") $3=step; else $3=$3 ">" step
+    if ($2==slug && ($3 == "" || $3 ~ /^ *$/)) {
+      $3=step
+    } else if ($2==slug && index($3, step)==0) {
+      $3=$3">"step
     }
     print $0
   }' "$CSV_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$CSV_FILE"
@@ -65,10 +67,17 @@ update_step_status() {
 clone_repo() {
   local repo_url="$1"  # GitLab repo URL
   local slug="$2"      # Directory name (slug)
-  log_message "INFO" "Cloning $repo_url into $REPOS_DIR/$slug ..."
-  # Clone using GitLab access token
-  git clone --depth=1 "https://oauth2:${GITLAB_TOKEN}@${repo_url#https://}" "$REPOS_DIR/$slug"
-  return $?
+  log_message "INFO" "Cloning $repo_url into $REPOS_DIR/$slug with all branches and tags ..."
+
+  # Clone using GitLab access token with all branches and tags
+  git clone --bare "https://oauth2:${GITLAB_TOKEN}@${repo_url#https://}" "$REPOS_DIR/$slug.git" || return 1
+
+  # # Convert the bare mirror repository to a normal repository
+  # cd "$REPOS_DIR/$slug" || return 1
+  # git config --unset core.bare || return 1
+  # cd - > /dev/null
+
+  return 0
 }
 
 # Create and push repo to GitHub
@@ -76,12 +85,35 @@ push_to_github() {
   local slug="$1"  # Directory name (slug)
   log_message "INFO" "Pushing $slug to GitHub org $GITHUB_ORG ..."
 
-  # Create repo on GitHub and push
-  gh repo create "$GITHUB_ORG/$slug" --private --source="$REPOS_DIR/$slug" --push || true
-  cd "$REPOS_DIR/$slug" || return 1  # Enter repo directory
-  git remote set-url origin "https://github.com/$GITHUB_ORG/$slug.git"  # Set remote URL
-  git push --mirror                    # Push all commits and branches to GitHub
-  cd - > /dev/null                     # Return to previous directory
+  # Create repo on GitHub
+  gh repo create "$GITHUB_ORG/$slug" --private || return 1
+  cd "$REPOS_DIR/$slug.git" || return 1  # Enter repo directory
+
+  # Verify repository integrity and clean up
+  # git fsck || return 1
+  # git gc --aggressive --prune=all || return 1
+  # git repack -a -d --depth=250 --window=250 || return 1
+
+  # Add remote origin
+  git remote add github "https://github.com/$GITHUB_ORG/$slug.git" || return 1
+
+  # Detect default branch
+  local default_branch
+  default_branch=$(git symbolic-ref HEAD | sed 's@^refs/heads/@@')
+
+  # Push default branch first
+  if [[ -n "$default_branch" ]]; then
+    log_message "INFO" "Pushing default branch $default_branch ..."
+    git push github "$default_branch" || return 1
+  fi
+
+  # Push all other branches and tags
+  log_message "INFO" "Pushing remaining branches and tags ..."
+  # git push --mirror || return 1
+  git push github --all || return 1
+  git push github --tags || return 1
+
+  cd - > /dev/null  # Return to previous directory
   return 0
 }
 
