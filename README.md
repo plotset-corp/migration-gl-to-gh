@@ -28,7 +28,6 @@ Before using this tool, ensure you have the following:
 
 1. **Environment Variables**:
    - `GITLAB_TOKEN`: GitLab access token.
-   - `GITHUB_TOKEN`: GitHub access token.
    - `GITHUB_ORG`: GitHub organization name.
    - `CSV_FILE`: Path to the CSV file containing repository details.
    - `REPOS_DIR`: Directory to clone repositories into.
@@ -60,7 +59,6 @@ Follow these steps to set up the migration tool:
 2. Create a `.env` file in the project directory and define the required environment variables:
    ```bash
    GITLAB_TOKEN=<your-gitlab-token>
-   GITHUB_TOKEN=<your-github-token>
    GITHUB_ORG=<your-github-organization>
    CSV_FILE=<path-to-your-csv-file>
    REPOS_DIR=<path-to-repos-directory>

@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/zsh
 
 # Log levels
 declare -A LOG_LEVELS=(
@@ -29,8 +29,18 @@ log_message() {
 # Check that all required environment variables are set
 check_env() {
   local missing=0
+  local required_vars=()
+  
+  # Determine which variables are required based on command
+  if [[ "$1" == "migrate" ]]; then
+    required_vars=(GITLAB_TOKEN GITHUB_ORG CSV_FILE REPOS_DIR TMP_FILE)
+  else
+    # For direct/migrate-single commands
+    required_vars=(GITLAB_TOKEN GITHUB_ORG REPOS_DIR)
+  fi
+  
   # Loop through required variables
-  for var in GITLAB_TOKEN GITHUB_ORG CSV_FILE REPOS_DIR TMP_FILE; do
+  for var in "${required_vars[@]}"; do
     # If variable is not set, print error
     if [[ -z "${(P)var}" ]]; then
       log_message "ERROR" "Error: $var is not set. Please set it in your .env file."
@@ -38,7 +48,7 @@ check_env() {
     fi
   done
   
-  # Ensure GitHub CLI is authenticated with the token
+  # Ensure GitHub CLI is authenticated
   gh auth status || gh auth login
 
   # Exit if any variable is missing
@@ -71,11 +81,6 @@ clone_repo() {
 
   # Clone using GitLab access token with all branches and tags
   git clone --bare "https://oauth2:${GITLAB_TOKEN}@${repo_url#https://}" "$REPOS_DIR/$slug.git" || return 1
-
-  # # Convert the bare mirror repository to a normal repository
-  # cd "$REPOS_DIR/$slug" || return 1
-  # git config --unset core.bare || return 1
-  # cd - > /dev/null
 
   return 0
 }
@@ -121,11 +126,39 @@ commit.committer_email = b\"${GIT_AUTHOR_EMAIL}\"
 
   # Push all other branches and tags
   log_message "INFO" "Pushing remaining branches and tags ..."
-  # git push --mirror || return 1
   git push github --all || return 1
   git push github --tags || return 1
 
   cd - > /dev/null  # Return to previous directory
+  return 0
+}
+
+# Function to migrate a single repository directly
+migrate_single() {
+  local repo_url="$1"  # GitLab repo URL
+  local slug="$2"      # Directory name (slug)
+  
+  log_message "INFO" "Starting direct migration of $repo_url to GitHub as $slug"
+  
+  mkdir -p "$REPOS_DIR"  # Ensure repos directory exists
+  
+  # Step 1: Clone repository
+  log_message "INFO" "Cloning repository..."
+  clone_repo "$repo_url" "$slug"
+  if [[ $? -ne 0 ]]; then
+    log_message "ERROR" "Failed to clone $repo_url"
+    return 1
+  fi
+  
+  # Step 2: Push to GitHub
+  log_message "INFO" "Pushing to GitHub as $slug..."
+  push_to_github "$slug"
+  if [[ $? -ne 0 ]]; then
+    log_message "ERROR" "Failed to push $slug to GitHub"
+    return 1
+  fi
+  
+  log_message "INFO" "Direct migration completed successfully."
   return 0
 }
 
@@ -177,21 +210,28 @@ case "$1" in
 Usage: ${0} [command]
 
 Commands:
-  migrate   Run the migration process (default)
-  help      Show this help message
+  migrate              Run the migration process using CSV file (default)
+  migrate-single <repo_url> <slug>   Migrate a single repository directly
+  direct <url> <slug>  Migrate a single repository directly (same as migrate-single)
+                       - url: GitLab repository URL
+                       - slug: Directory name for local clone and GitHub repo name
+  help                 Show this help message
 
 Environment variables required (in .env):
   GITLAB_TOKEN   GitLab access token
-  GITHUB_TOKEN   GitHub access token
   GITHUB_ORG     GitHub organization name
-  CSV_FILE       Path to the CSV file
+  CSV_FILE       Path to the CSV file (for migrate command)
   REPOS_DIR      Directory to clone repos into
-  TMP_FILE       Temporary file for CSV updates
+  TMP_FILE       Temporary file for CSV updates (for migrate command)
 EOF
     ;;
   migrate|"")
-    check_env   # Check environment variables
+    check_env "migrate"   # Check environment variables for migrate command
     migrate     # Run migration
+    ;;
+  migrate-single|direct)
+    check_env "direct"   # Check environment variables for direct migration
+    migrate_single "$2" "$3"  # Run single repository migration
     ;;
   *)
     log_message "ERROR" "Unknown command: $1"  # Handle unknown command
@@ -200,16 +240,17 @@ EOF
 Usage: ${0##*/} [command]
 
 Commands:
-  migrate   Run the migration process (default)
-  help      Show this help message
+  migrate              Run the migration process using CSV file (default)
+  direct <url> <slug>  Migrate a single repository directly
+  migrate-single <repo_url> <slug>   Migrate a single repository directly
+  help                 Show this help message
 
 Environment variables required (in .env):
   GITLAB_TOKEN   GitLab access token
-  GITHUB_TOKEN   GitHub access token
   GITHUB_ORG     GitHub organization name
-  CSV_FILE       Path to the CSV file
+  CSV_FILE       Path to the CSV file (for migrate command)
   REPOS_DIR      Directory to clone repos into
-  TMP_FILE       Temporary file for CSV updates
+  TMP_FILE       Temporary file for CSV updates (for migrate command)
 EOF
     exit 1
     ;;

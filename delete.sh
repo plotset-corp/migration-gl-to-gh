@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/zsh
 
 # Log levels
 declare -A LOG_LEVELS=(
@@ -38,6 +38,25 @@ delete_repo() {
   fi
 }
 
+# Delete a single GitHub repository directly
+delete_single() {
+  local repo_name="$1"  # GitHub repo name
+  
+  if [[ -z "$repo_name" ]]; then
+    log_message "ERROR" "Repository name is required for single deletion"
+    log_message "INFO" "Usage: $0 delete-single <repo-name>"
+    return 1
+  fi
+  
+  log_message "INFO" "Starting single repository deletion: $repo_name"
+  
+  # Delete the repository
+  delete_repo "$repo_name"
+  
+  log_message "INFO" "Single repository deletion completed."
+  return 0
+}
+
 # Main deletion process
 delete_all_repos() {
   log_message "INFO" "Starting deletion process for all repos in $CSV_FILE ..."
@@ -69,20 +88,36 @@ case "$1" in
 Usage: $0 [command]
 
 Commands:
-  delete   Run the deletion process (default)
-  help     Show this help message
+  delete               Run the deletion process using CSV file (default)
+  delete-single <repo> Delete a single repository directly
+                       - repo: Repository name (without organization prefix)
+  help                 Show this help message
 
 Environment variables required (in .env):
-  GITHUB_TOKEN   GitHub access token
   GITHUB_ORG     GitHub organization name
-  CSV_FILE       Path to the CSV file
+  CSV_FILE       Path to the CSV file (for delete command)
 EOF
     ;;
   delete|"")
     delete_all_repos  # Run deletion
     ;;
+  delete-single)
+    delete_single "$2"  # Run single repository deletion
+    ;;
   *)
     log_message "ERROR" "Unknown command: $1"  # Handle unknown command
+    cat <<EOF
+Usage: $0 [command]
+
+Commands:
+  delete               Run the deletion process using CSV file (default)
+  delete-single <repo> Delete a single repository directly
+  help                 Show this help message
+
+Environment variables required (in .env):
+  GITHUB_ORG     GitHub organization name
+  CSV_FILE       Path to the CSV file (for delete command)
+EOF
     exit 1
     ;;
 esac
