@@ -1,4 +1,4 @@
-#!/usr/bin/zsh
+#!/bin/zsh
 
 # Log levels
 declare -A LOG_LEVELS=(
@@ -10,7 +10,11 @@ declare -A LOG_LEVELS=(
 
 # Default log level
 LOG_LEVEL=${LOG_LEVEL:-"INFO"}
-LOG_FILE="delete_repos_$(date '+%Y%m%d_%H%M%S').log"
+
+# Ensure log directory exists and set log file path
+LOG_DIR="log"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/delete_repos_$(date '+%Y%m%d_%H%M%S').log"
 
 # Logging function
 log_message() {
